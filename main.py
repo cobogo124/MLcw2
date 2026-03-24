@@ -24,7 +24,6 @@ def main():
     
     try:
         state_dict = torch.load('simclr_cifar10.pth', map_location=device)
-        model.load_state_dict(state_dict, strict=False)
     except FileNotFoundError:
         print("Warning: simclr_cifar10.pth not found. Using random weights.")
         
@@ -38,11 +37,6 @@ def main():
             imgs = imgs.to(device) # Move data batch to GPU
             feat = model(imgs) 
             # Move results back to CPU for numpy compatibility
-            all_features.append(feat.cpu().numpy())
-    
-    features_matrix = np.concatenate(all_features, axis=0)
-
-    # 4. Run TypiClust Selection
     budget_b = 10 
     selected_indices = select_queries(features_matrix, budget_b)
 

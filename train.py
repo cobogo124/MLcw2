@@ -6,8 +6,14 @@ import torch.nn.functional as F
 from model import TypiClustResNet
 
 # Augmentation Strategy
+<<<<<<< HEAD
 simclr_transforms = transforms.Compose([
     transforms.RandomResizedCrop(size=32), 
+=======
+# teach the model to ignore color/crops and focus on semantics
+simclr_transforms = transforms.Compose([
+    transforms.RandomResizedCrop(size=32), # CIFAR-10 size 
+>>>>>>> 14d8c99bb06298e9ddd9db8cf28c01feb60687ad
     transforms.RandomHorizontalFlip(),
     transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
     transforms.RandomGrayscale(p=0.2),
@@ -15,6 +21,10 @@ simclr_transforms = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
 
+<<<<<<< HEAD
+=======
+# Wrapper to return two views of the same image [cite: 566]
+>>>>>>> 14d8c99bb06298e9ddd9db8cf28c01feb60687ad
 class SimCLRDataset(torch.utils.data.Dataset):
     def __init__(self, dataset, transform):
         self.dataset = dataset
