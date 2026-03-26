@@ -1,0 +1,11 @@
+# Model checkpoints and weights
+*.pth
+*.ckpt
+
+# Large dataset artifacts (local-only)
+data/
+__pycache__/
+.venv/
+*.pyc
+
+*.tar.gz

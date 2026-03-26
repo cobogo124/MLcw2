@@ -2,3 +2,5 @@ torch
 torchvision
 scikit-learn
 lightly
+matplotlib
+seaborn
