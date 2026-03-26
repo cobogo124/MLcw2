@@ -5,7 +5,6 @@ from torchvision import datasets, transforms
 import torch.nn.functional as F
 from model import TypiClustResNet
 
-# Augmentation Strategy
 simclr_transforms = transforms.Compose([
     transforms.RandomResizedCrop(size=32), 
     transforms.RandomHorizontalFlip(),
@@ -26,7 +25,6 @@ class SimCLRDataset(torch.utils.data.Dataset):
         return len(self.dataset)
 
 def contrastive_loss(out_1, out_2, temperature=0.5):
-    # Ensure all tensors are created on the same device as the input data
     device = out_1.device
     out = torch.cat([out_1, out_2], dim=0)
     n = out.shape[0]
@@ -41,10 +39,9 @@ def contrastive_loss(out_1, out_2, temperature=0.5):
 
 def train():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Starting training on: {device}") # Immediate confirmation
+    print(f"Starting training on: {device}")
     
     base_dataset = datasets.CIFAR10(root='./data', train=True, download=True)
-    # Added num_workers=0 to prevent Windows multi-processing hangs
     train_loader = DataLoader(SimCLRDataset(base_dataset, simclr_transforms), 
                               batch_size=512, 
                               shuffle=True, 
@@ -71,8 +68,6 @@ def train():
             optimizer.step()
             
             running_loss += loss.item()
-            
-            # NEW: Print every 20 batches so you know it's working!
             if batch_idx % 20 == 0:
                 print(f"Epoch [{epoch}/500] Batch [{batch_idx}/{len(train_loader)}] Loss: {loss.item():.4f}")
         
