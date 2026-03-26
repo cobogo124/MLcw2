@@ -3,7 +3,8 @@ from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 
 def calculate_typicality(features, k=20):
-    nn = NearestNeighbors(n_neighbors=k, metric='euclidean')
+    # n_jobs=1 avoids the Windows wmic subprocess error
+    nn = NearestNeighbors(n_neighbors=k, metric='euclidean', n_jobs=1)
     nn.fit(features)
     distances, _ = nn.kneighbors(features)
     avg_dist = np.mean(distances, axis=1)
@@ -11,32 +12,40 @@ def calculate_typicality(features, k=20):
 
 def select_queries_modified(features, budget_b, already_labeled_indices=[]):
     typicality_scores = calculate_typicality(features)
-    num_clusters = len(already_labeled_indices) + budget_b
     
-    kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
+    # We create slightly more clusters than the budget to find dense sub-pockets
+    num_clusters = len(already_labeled_indices) + int(budget_b * 1.2)
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=3)
     cluster_labels = kmeans.fit_predict(features)
     
-    # NEW: Calculate cluster sizes to identify "significant" regions
-    cluster_sizes = np.array([np.sum(cluster_labels == i) for i in range(num_clusters)])
+    # Calculate weights based on cluster sizes (Max Density Heuristic) [cite: 918]
+    cluster_sizes = np.bincount(cluster_labels, minlength=num_clusters)
+    cluster_weights = np.sqrt(cluster_sizes) # Using sqrt to balance density and diversity
     
-    labeled_clusters = set(cluster_labels[already_labeled_indices])
-    uncovered_clusters = list(set(range(num_clusters)) - labeled_clusters)
-    
-    # Sort by size to prioritize large, diverse regions first
-    uncovered_clusters.sort(key=lambda c: cluster_sizes[c], reverse=True)
+    # Global Scoring: points are ranked by typicality AND the size of their neighborhood
+    weighted_scores = typicality_scores * cluster_weights[cluster_labels]
     
     selected_indices = []
-    for i in range(min(budget_b, len(uncovered_clusters))):
-        c_idx = uncovered_clusters[i]
-        indices = np.where(cluster_labels == c_idx)[0]
+    labeled_clusters = set(cluster_labels[already_labeled_indices])
+    
+    # Sort all points by the new global metric
+    potential_indices = np.argsort(weighted_scores)[::-1]
+    
+    for idx in potential_indices:
+        if len(selected_indices) >= budget_b:
+            break
         
-        # MODIFICATION: Weighted Typicality
-        # Instead of just Argmax(Typicality), we scale by the log of cluster size.
-        # This prevents picking typical points from tiny, irrelevant "noise" clusters.
-        size_weight = np.log1p(cluster_sizes[c_idx]) 
-        weighted_scores = typicality_scores[indices] * size_weight
-        
-        best_idx = indices[np.argmax(weighted_scores)]
-        selected_indices.append(best_idx)
+        c_id = cluster_labels[idx]
+        # Diversity: Still try to cover new clusters first
+        if c_id not in labeled_clusters:
+            selected_indices.append(idx)
+            labeled_clusters.add(c_id)
+            
+    # Fallback: if we haven't reached the budget, pick the next best weighted points
+    if len(selected_indices) < budget_b:
+        for idx in potential_indices:
+            if len(selected_indices) >= budget_b: break
+            if idx not in selected_indices:
+                selected_indices.append(idx)
         
     return selected_indices
